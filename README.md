@@ -55,6 +55,92 @@ A única exigência é que a aplicação possa ser executada localmente conforme
 
 Testes são desejáveis, mas não obrigatórios.
 
+## Backend: execução e API
+
+O backend usa NestJS, PostgreSQL e Drizzle ORM. Para subir a infraestrutura local:
+
+```bash
+docker compose up -d postgres
+cd backend
+cp .env.example .env
+npm ci
+npm run db:migrate
+npm run db:seed
+npm run start:dev
+```
+
+### Arquitetura do backend
+
+Cada módulo de negócio em `backend/src/modules` segue a separação:
+
+```text
+modules/<modulo>/
+├── domain/
+│   ├── entities/       # modelos e invariantes do domínio
+│   └── repositories/   # contratos, sem dependência de Drizzle/Nest
+├── application/
+│   ├── dtos/           # entradas e saídas do caso de uso
+│   └── use-cases/      # orquestração das regras de negócio
+└── infrastructure/
+    ├── controllers/    # adaptadores HTTP/Nest
+    └── repositories/   # implementações de persistência
+```
+
+O banco compartilhado fica em `backend/src/database`. Controllers
+dependem de casos de uso; casos de uso dependem de contratos do domínio; e
+implementações concretas de infraestrutura são compostas pelos módulos Nest.
+Assim, a regra de negócio não precisa conhecer HTTP ou o ORM e pode ser
+testada isoladamente.
+
+O seed cria duas obras, três usuários, dois fornecedores e regras de alçada de
+demonstração. A API fica disponível em `http://localhost:3001`. Os valores
+monetários da API são enviados em centavos (por exemplo, `1000000` representa
+R$ 10.000,00).
+
+Principais endpoints:
+
+| Método | Endpoint | Uso |
+|---|---|---|
+| `GET/POST` | `/works`, `/users`, `/suppliers` | Consultar e cadastrar dados de referência |
+| `GET/POST/PATCH/DELETE` | `/works/:workId/approval-rules[/:ruleId]` | Gerenciar faixas e aprovadores ordenados |
+| `GET` | `/orders` e `/orders/:id` | Listar pedidos e consultar itens/histórico |
+| `POST` | `/orders` | Criar pedido e materializar sua cadeia de aprovação |
+| `POST` | `/orders/:id/approve` | Aprovar a etapa atual (`{"userId": 1}`) |
+| `POST` | `/orders/:id/reject` | Rejeitar com motivo (`{"userId": 1, "reason": "..."}`) |
+
+Exemplo de criação de pedido:
+
+```json
+{
+  "workId": 1,
+  "supplierId": 1,
+  "orderDate": "2026-10-28T12:00:00.000Z",
+  "notes": "Compra para a fundação",
+  "items": [
+    { "description": "Cimento", "quantity": "20", "unit": "saco", "unitPriceCents": 4500 }
+  ]
+}
+```
+
+O total é calculado exclusivamente no backend. A regra aplicável é a faixa
+com maior limite mínimo que contenha o total; se não houver regra, o pedido é
+recusado. A criação do cabeçalho, itens e etapas ocorre em uma transação.
+Somente o aprovador da etapa pendente pode decidir. Uma rejeição exige motivo,
+interrompe a cadeia e permanece no histórico; após a última aprovação o pedido
+passa para `APPROVED`. Faixas sem limite máximo representam o intervalo final.
+
+### Decisões técnicas
+
+- **PostgreSQL + Drizzle:** integridade referencial, enums de status, índices
+  únicos e transações explícitas, mantendo as consultas próximas ao SQL.
+- **Centavos inteiros:** evita erros de ponto flutuante em totais e limites.
+- **Cadeia materializada:** alterações futuras nas regras não mudam o histórico
+  de um pedido já criado.
+- **Validação e concorrência:** DTOs rejeitam payloads inválidos; a transação
+  verifica a etapa pendente e o status atual antes de registrar cada decisão.
+- Em produção, adicionaria autenticação/autorização, paginação, auditoria
+  imutável, observabilidade, migrações executadas no deploy e pool gerenciado.
+
 ---
 
 # O que você vai construir

@@ -1,11 +1,17 @@
 name: obraflow
 
 services:
-  redis:
-    image: redis:7-alpine
-    command: redis-server --save "" --appendonly no
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: obraflow
+      POSTGRES_PASSWORD: obraflow
+      POSTGRES_DB: obraflow
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "pg_isready -U obraflow -d obraflow"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -19,11 +25,11 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: 3001
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgres://obraflow:obraflow@postgres:5432/obraflow
     ports:
       - "${BACKEND_PORT:-3001}:3001"
     depends_on:
-      redis:
+      postgres:
         condition: service_healthy
 
   frontend:
