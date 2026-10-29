@@ -18,5 +18,5 @@ export type OrderItem = {
   description: string;
   quantity: string;
   unit: string;
-  unitPriceCents: string;
+  unitPrice: string;
 };

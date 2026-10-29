@@ -12,8 +12,20 @@ const emptyItem = (): OrderItem => ({
   description: '',
   quantity: '1',
   unit: 'un',
-  unitPriceCents: '',
+  unitPrice: '',
 });
+
+function sanitizeMoneyInput(value: string): string {
+  const normalized = value.replace(/[^\d.,]/g, '').replace(',', '.');
+  const [whole, ...fractionParts] = normalized.split('.');
+  if (!fractionParts.length) return whole;
+  return `${whole}.${fractionParts.join('').slice(0, 2)}`;
+}
+
+function parseMoney(value: string): number {
+  const parsed = Number(value.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
 type Props = {
   works: Option[];
@@ -42,7 +54,7 @@ export function NewOrderForm({
     () =>
       items.reduce(
         (sum, item) =>
-          sum + Number(item.quantity || 0) * Number(item.unitPriceCents || 0),
+          sum + Number(item.quantity || 0) * parseMoney(item.unitPrice),
         0,
       ),
     [items],
@@ -61,7 +73,7 @@ export function NewOrderForm({
       supplierId,
       orderDate,
       notes,
-      items: items.map((item) => ({ ...item, unitPrice: item.unitPriceCents })),
+      items,
     });
     if (!parsed.success) {
       onSuccess(
@@ -78,7 +90,7 @@ export function NewOrderForm({
         notes: notes || undefined,
         items: items.map((item) => ({
           ...item,
-          unitPriceCents: Math.round(Number(item.unitPriceCents) * 100),
+          unitPriceCents: Math.round(parseMoney(item.unitPrice) * 100),
         })),
       }),
     });
@@ -196,22 +208,20 @@ export function NewOrderForm({
                 <span>R$</span>
                 <input
                   required
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={
-                    item.unitPriceCents ? Number(item.unitPriceCents) / 100 : ''
-                  }
+                  type="text"
+                  inputMode="decimal"
+                  pattern="[0-9]+([.,][0-9]{1,2})?"
+                  value={item.unitPrice}
                   onChange={(event) =>
-                    updateItem(index, { unitPriceCents: event.target.value })
+                    updateItem(index, {
+                      unitPrice: sanitizeMoneyInput(event.target.value),
+                    })
                   }
                 />
               </div>
               <strong>
                 {formatMoney(
-                  Number(item.quantity || 0) *
-                    Number(item.unitPriceCents || 0) *
-                    100,
+                  Number(item.quantity || 0) * parseMoney(item.unitPrice) * 100,
                 )}
               </strong>
               <button

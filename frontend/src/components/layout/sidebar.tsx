@@ -51,7 +51,6 @@ export function Sidebar({ screen, pendingCount, onNavigate }: Props) {
       <div className="sidebar-bottom">
         <div className="help">?</div>
         <span>Central de ajuda</span>
-        <div className="theme">☼</div>
       </div>
     </aside>
   );

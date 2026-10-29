@@ -1,4 +1,5 @@
 import {
+  ArrayMinSize,
   IsArray,
   IsInt,
   IsOptional,
@@ -24,6 +25,7 @@ export class SaveApprovalRuleDto {
   maximumTotalCents?: number;
 
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => ApprovalRuleApproverDto)
   approvers!: ApprovalRuleApproverDto[];
