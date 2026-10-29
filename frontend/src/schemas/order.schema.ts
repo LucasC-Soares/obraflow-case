@@ -4,7 +4,10 @@ export const orderItemSchema = z.object({
   description: z.string().trim().min(1, 'Informe a descrição do item.'),
   quantity: z.coerce.number().positive('A quantidade deve ser maior que zero.'),
   unit: z.string().trim().min(1, 'Informe a unidade.'),
-  unitPrice: z.coerce.number().min(0, 'O preço não pode ser negativo.'),
+  unitPrice: z.preprocess(
+    (value) => (typeof value === 'string' ? value.replace(',', '.') : value),
+    z.coerce.number().min(0, 'O preço não pode ser negativo.'),
+  ),
 });
 
 export const createOrderSchema = z.object({

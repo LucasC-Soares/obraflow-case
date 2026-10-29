@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 import { apiRequest } from '@/lib/client';
 import { API_ROUTES } from '@/constants/api-routes';
 import { formatMoney } from '@/lib/format';
@@ -29,33 +29,84 @@ export function RulesScreen({
   const [minimum, setMinimum] = useState('');
   const [maximum, setMaximum] = useState('');
   const [approverIds, setApproverIds] = useState<string[]>([]);
+  const [approverSearch, setApproverSearch] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const selectedApprovers = useMemo(
+    () =>
+      approverIds
+        .map((id) => users.find((user) => String(user.id) === id))
+        .filter((user): user is Option => user !== undefined),
+    [approverIds, users],
+  );
+  const availableApprovers = useMemo(() => {
+    const search = approverSearch.trim().toLocaleLowerCase();
+    return users
+      .filter(
+        (user) =>
+          !approverIds.includes(String(user.id)) &&
+          (!search || user.name.toLocaleLowerCase().includes(search)),
+      )
+      .slice(0, 20);
+  }, [approverSearch, approverIds, users]);
+
+  const addApprover = (userId: string) => {
+    if (!userId || approverIds.includes(userId)) return;
+    setApproverIds((current) => [...current, userId]);
+    setApproverSearch('');
+  };
+
+  const moveApprover = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= approverIds.length) return;
+    setApproverIds((current) => {
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
+  };
+
   const save = async (event: FormEvent) => {
     event.preventDefault();
+    setSaveError('');
     const parsed = approvalRuleSchema.safeParse({
       minimum,
       maximum: maximum || undefined,
       approverIds,
     });
-    if (!parsed.success) return;
-    await apiRequest(
-      API_ROUTES.approvalRules.byWork(selectedWork),
-      z.unknown(),
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          minimumTotalCents: Math.round(Number(minimum) * 100),
-          maximumTotalCents: maximum
-            ? Math.round(Number(maximum) * 100)
-            : undefined,
-          approvers: approverIds.map((userId) => ({ userId: Number(userId) })),
-        }),
-      },
-    );
-    setMinimum('');
-    setMaximum('');
-    setApproverIds([]);
-    onNotice('Faixa de alçada criada.');
-    await onReload();
+    if (!parsed.success) {
+      setSaveError(parsed.error.issues[0]?.message ?? 'Revise os campos.');
+      return;
+    }
+    try {
+      await apiRequest(
+        API_ROUTES.approvalRules.byWork(selectedWork),
+        z.unknown(),
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            minimumTotalCents: Math.round(Number(minimum) * 100),
+            maximumTotalCents: maximum
+              ? Math.round(Number(maximum) * 100)
+              : undefined,
+            approvers: approverIds.map((userId) => ({
+              userId: Number(userId),
+            })),
+          }),
+        },
+      );
+      setMinimum('');
+      setMaximum('');
+      setApproverIds([]);
+      setApproverSearch('');
+      onNotice('Faixa de alçada criada.');
+      await onReload();
+    } catch (cause) {
+      setSaveError(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível salvar a faixa.',
+      );
+    }
   };
   return (
     <div className="rules-layout">
@@ -138,24 +189,73 @@ export function RulesScreen({
           />
         </label>
         <label>Aprovadores</label>
-        <div className="approver-selects">
-          {users.map((user) => (
-            <label className="check" key={user.id}>
-              <input
-                type="checkbox"
-                checked={approverIds.includes(String(user.id))}
-                onChange={(event) =>
-                  setApproverIds(
-                    event.target.checked
-                      ? [...approverIds, String(user.id)]
-                      : approverIds.filter((id) => id !== String(user.id)),
-                  )
-                }
-              />
-              <span>{user.name}</span>
-            </label>
-          ))}
+        <div className="approver-picker">
+          <input
+            type="search"
+            placeholder="Buscar usuário..."
+            value={approverSearch}
+            onChange={(event) => setApproverSearch(event.target.value)}
+          />
+          {approverSearch && (
+            <div className="approver-results">
+              {availableApprovers.length ? (
+                availableApprovers.map((user) => (
+                  <button
+                    type="button"
+                    key={user.id}
+                    onClick={() => addApprover(String(user.id))}
+                  >
+                    {user.name}
+                  </button>
+                ))
+              ) : (
+                <span>Nenhum usuário encontrado.</span>
+              )}
+            </div>
+          )}
         </div>
+        <div className="selected-approvers">
+          {selectedApprovers.length ? (
+            selectedApprovers.map((user, index) => (
+              <div className="selected-approver" key={user.id}>
+                <span className="selected-position">{index + 1}</span>
+                <span>{user.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Mover ${user.name} para cima`}
+                  disabled={index === 0}
+                  onClick={() => moveApprover(index, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Mover ${user.name} para baixo`}
+                  disabled={index === selectedApprovers.length - 1}
+                  onClick={() => moveApprover(index, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Remover ${user.name}`}
+                  onClick={() =>
+                    setApproverIds((current) =>
+                      current.filter((id) => id !== String(user.id)),
+                    )
+                  }
+                >
+                  ×
+                </button>
+              </div>
+            ))
+          ) : (
+            <span className="approver-placeholder">
+              Busque e adicione os aprovadores na ordem do fluxo.
+            </span>
+          )}
+        </div>
+        {saveError && <p className="rule-error">{saveError}</p>}
         <button
           className="primary-button"
           disabled={!selectedWork || !approverIds.length}
