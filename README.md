@@ -263,6 +263,7 @@ erDiagram
         int id PK
         varchar name
         varchar email UK
+        varchar password_hash
         timestamp created_at
     }
 

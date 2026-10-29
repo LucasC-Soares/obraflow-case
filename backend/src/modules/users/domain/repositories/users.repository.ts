@@ -1,6 +1,14 @@
+import { User } from '../entities/user.entity';
+
 export const USERS_REPOSITORY = Symbol('USERS_REPOSITORY');
 
+export type CreateUserData = {
+  name: string;
+  email: string;
+};
+
 export interface UsersRepository {
-  list(): Promise<unknown[]>;
-  create(data: { name: string; email: string }): Promise<unknown[]>;
+  list(): Promise<User[]>;
+  create(data: CreateUserData): Promise<User | null>;
+  toDomainEntity(data: unknown): User;
 }

@@ -2,7 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   USERS_REPOSITORY,
   UsersRepository,
+  CreateUserData,
 } from '../../domain/repositories/users.repository';
+import { User } from '../../domain/entities/user.entity';
 
 @Injectable()
 export class UsersService {
@@ -10,11 +12,11 @@ export class UsersService {
     @Inject(USERS_REPOSITORY) private readonly repository: UsersRepository,
   ) {}
 
-  list() {
+  list(): Promise<User[]> {
     return this.repository.list();
   }
 
-  create(data: { name: string; email: string }) {
+  create(data: CreateUserData): Promise<User | null> {
     return this.repository.create(data);
   }
 }
