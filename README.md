@@ -458,11 +458,12 @@ npm run db:generate
 
 Para produção, eu adicionaria:
 
-- autenticação e autorização por usuário/obra;
+- autenticação e autorização por usuário/obra.
 - identificação do aprovador a partir da sessão, sem aceitar `userId` vindo
-  livremente da interface;
-- paginação e filtros na lista de pedidos;
-- auditoria imutável e observabilidade;
-- testes de integração/e2e para concorrência e regras de alçada;
-- modal/formulário dedicado para decisões, substituindo entradas simples;
+  livremente da interface.
+- paginação e filtros na lista de pedidos.
+- auditoria imutável e observabilidade.
+- testes de integração/e2e para concorrência e regras de alçada.
+- modal/formulário dedicado para decisões, substituindo entradas simples.
 - atualização em tempo real da fila de aprovação.
+- pipelines de CI/CD para build, lint, testes e deploy.
