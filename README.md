@@ -1,9 +1,142 @@
-## Backend: execução e API
+# ObraFlow
 
-O backend usa NestJS, PostgreSQL e Drizzle ORM. Para subir a infraestrutura local:
+Aplicação full-stack para cadastro de pedidos de compra e aprovação por
+alçadas configuráveis por obra. O projeto implementa o fluxo simplificado
+proposto no desafio: uma compra possui um ou mais itens, seu valor total
+define a faixa aplicável e a cadeia de aprovadores é executada em ordem.
+
+## Demonstração visual
+
+### Cadastro de pedido de compra
+
+![Tela de cadastro de pedido de compra](assets/Cadastro%20de%20pedido%20de%20compra.png)
+
+A tela permite selecionar a obra e o fornecedor, informar a data e observações,
+adicionar/remover itens e acompanhar o total calculado do pedido.
+
+### Aprovação
+
+![Tela de aprovação](assets/Aprovação.png)
+
+A tela apresenta os pedidos, seus valores e situações, além das ações
+disponíveis para aprovação e rejeição.
+
+### Regras da alçada
+
+![Tela de regras da alçada](assets/Regras%20da%20Alçada.png)
+
+A configuração é feita por obra, com faixas de valor e aprovadores ordenados.
+
+## Stack e motivos das escolhas
+
+### Frontend
+
+- **Next.js 16 e React 18:** estrutura de aplicação, renderização e
+  organização por rotas/componentes.
+- **TypeScript:** segurança de tipos entre componentes, hooks e integração
+  com a API.
+- **Zod:** validação dos formulários e validação das respostas recebidas da
+  API antes de entrarem no estado da interface.
+- **React Query:** provider preparado para gerenciamento de dados assíncronos.
+- **Tailwind CSS 4 e CSS modularizado por responsabilidade:** tokens,
+  layout, pedidos, regras e responsividade ficam separados em
+  `frontend/src/styles`.
+
+### Backend
+
+- **NestJS:** módulos, controllers, injeção de dependência e pipes de
+  validação.
+- **PostgreSQL:** persistência relacional, integridade referencial, enums e
+  transações.
+- **Drizzle ORM:** consultas tipadas, schema próximo do SQL e migrations
+  versionadas.
+- **class-validator/class-transformer:** validação e transformação dos DTOs
+  HTTP.
+
+### Infraestrutura
+
+- **Docker Compose:** orquestra PostgreSQL, backend e frontend localmente.
+- **Node.js 22 Alpine:** imagens menores e ambiente consistente entre
+  desenvolvimento e execução.
+
+## Requisitos
+
+Para executar localmente, instale:
+
+- Docker e Docker Compose; ou
+- Node.js 22 ou superior, npm e PostgreSQL 17 ou compatível.
+
+Não são necessárias credenciais externas ou serviços pagos.
+
+## Execução com Docker Compose
+
+O caminho recomendado é iniciar toda a aplicação por Docker:
 
 ```bash
-docker compose up -d postgres
+docker compose up --build
+```
+
+O fluxo de inicialização do backend:
+
+1. aguarda o healthcheck do PostgreSQL;
+2. aplica automaticamente as migrations do Drizzle;
+3. inicia a API NestJS.
+
+Após a inicialização:
+
+- Frontend: <http://localhost:3000>
+- API: <http://localhost:3001>
+- PostgreSQL: `localhost:5432`
+
+As migrations criam as tabelas, mas não inserem dados de demonstração.
+Execute o seed uma vez:
+
+```bash
+docker compose exec backend node dist/database/seed.js
+```
+
+O seed cria:
+
+- 2 obras;
+- 3 usuários;
+- 2 fornecedores;
+- regras de alçada para as duas obras;
+- 2 pedidos em estados diferentes;
+- itens e histórico de aprovações.
+
+O seed não é idempotente. Se for necessário recriar o ambiente de demonstração
+do zero, remova o volume do banco e suba os serviços novamente:
+
+```bash
+docker compose down -v
+docker compose up --build
+docker compose exec backend node dist/database/seed.js
+```
+
+> `docker compose down -v` remove os dados persistidos do PostgreSQL. Use
+> somente quando não houver dados que precisem ser preservados.
+
+### Variáveis do Docker Compose
+
+Os valores padrão funcionam para execução local. Eles podem ser substituídos
+por um arquivo `.env` na raiz:
+
+| Variável | Padrão | Uso |
+|---|---|---|
+| `POSTGRES_PORT` | `5432` | Porta exposta do PostgreSQL |
+| `BACKEND_PORT` | `3001` | Porta exposta da API |
+| `FRONTEND_PORT` | `3000` | Porta exposta do frontend |
+| `FRONTEND_URL` | `http://localhost:3000` | Origem permitida pelo CORS |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | URL da API usada pelo frontend |
+| `BUILD_TARGET` | `production` | Target Docker usado pelos serviços |
+
+## Execução sem Docker
+
+### Backend
+
+Suba um PostgreSQL local e configure o ambiente:
+
+```bash
 cd backend
 cp .env.example .env
 npm ci
@@ -12,59 +145,174 @@ npm run db:seed
 npm run start:dev
 ```
 
-Com Docker Compose, o container do backend aguarda o Postgres ficar saudável,
-aplica as migrations automaticamente e então inicia a API:
+O arquivo `backend/.env` usa:
 
-```bash
-docker compose up --build
+```env
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+DATABASE_URL=postgres://obraflow:obraflow@localhost:5432/obraflow
 ```
 
-Para carregar os dados de demonstração depois da primeira inicialização:
+Adapte `DATABASE_URL` ao usuário, senha, host e porta da sua instalação.
+
+### Frontend
+
+Em outro terminal:
 
 ```bash
-docker compose exec backend node dist/database/seed.js
+cd frontend
+cp .env.example .env.local
+npm ci
+npm run dev
 ```
 
-### Arquitetura do backend
+O arquivo `frontend/.env.local` deve apontar para a API:
 
-Cada módulo de negócio em `backend/src/modules` segue a separação:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+```
+
+Para executar as versões de produção localmente:
+
+```bash
+cd frontend
+npm run build
+npm run start
+```
+
+## Arquitetura
+
+### Backend
+
+O backend segue uma separação inspirada em Clean Architecture por módulo:
 
 ```text
-modules/<modulo>/
-├── domain/
-│   ├── entities/       # modelos e invariantes do domínio
-│   └── repositories/   # contratos, sem dependência de Drizzle/Nest
-├── application/
-│   ├── dtos/           # entradas e saídas do caso de uso
-│   └── use-cases/      # orquestração das regras de negócio
-└── infrastructure/
-    ├── controllers/    # adaptadores HTTP/Nest
-    └── repositories/   # implementações de persistência
+backend/src/
+├── database/
+│   ├── schema.ts              # Schema Drizzle
+│   ├── migrate.ts             # Runner usado no container
+│   └── seed.ts                # Dados de demonstração
+└── modules/
+    ├── suppliers/
+    ├── users/
+    ├── works/
+    ├── orders/
+    └── approval-rules/
+        ├── domain/
+        │   ├── entities/
+        │   └── repositories/  # Contratos de persistência
+        ├── application/
+        │   ├── dtos/
+        │   ├── services/
+        │   └── use-cases/
+        └── infrastructure/
+            ├── controllers/
+            └── repositories/  # Implementações Drizzle
 ```
 
-O banco compartilhado fica em `backend/src/database`. Controllers
-dependem de casos de uso; casos de uso dependem de contratos do domínio; e
-implementações concretas de infraestrutura são compostas pelos módulos Nest.
-Assim, a regra de negócio não precisa conhecer HTTP ou o ORM e pode ser
-testada isoladamente.
+Entidades e contratos de repositório não dependem de NestJS ou Drizzle.
+Controllers adaptam HTTP para casos de uso; services concentram operações
+reutilizáveis; repositories concretos ficam na infraestrutura.
 
-O seed cria duas obras, três usuários, dois fornecedores e regras de alçada de
-demonstração. A API fica disponível em `http://localhost:3001`. Os valores
-monetários da API são enviados em centavos (por exemplo, `1000000` representa
-R$ 10.000,00).
+### Frontend
 
-Principais endpoints:
+```text
+frontend/src/
+├── app/                       # Composição da aplicação Next.js
+├── components/                # Componentes compartilhados de layout/UI
+├── constants/                 # Rotas da API
+├── features/
+│   ├── orders/
+│   │   └── components/
+│   └── rules/
+│       └── components/
+├── hooks/                     # Estado e carregamento compartilhado
+├── lib/                       # Cliente HTTP e formatação
+├── schemas/                   # Schemas Zod compartilhados
+├── styles/                    # Estilos separados por responsabilidade
+└── types/                     # Tipos compartilhados da interface
+```
 
-| Método | Endpoint | Uso |
+As features não importam umas às outras. Componentes compartilhados não
+conhecem regras específicas de uma feature. As rotas HTTP ficam centralizadas
+em `frontend/src/constants/api-routes.ts`.
+
+## Regras de negócio
+
+### Criação do pedido
+
+1. O pedido exige obra, fornecedor, data e pelo menos um item.
+2. Cada item exige descrição, quantidade positiva, unidade e preço não
+   negativo.
+3. O frontend exibe os totais para feedback imediato, mas o backend recalcula
+   tudo.
+4. O total persistido é a soma de `quantidade × preço unitário`.
+5. Valores monetários são armazenados e enviados em centavos inteiros.
+   Portanto, `1000000` representa R$ 10.000,00.
+6. A regra aplicável é a faixa da obra cujo intervalo contém o total e que
+   possui o maior limite mínimo.
+7. Se não existir uma regra aplicável, o pedido é rejeitado com mensagem de
+   validação e não é persistido.
+8. A cadeia de aprovadores é copiada para o pedido no momento da criação.
+   Alterações futuras nas regras não modificam o histórico de pedidos já
+   criados.
+
+### Aprovação e rejeição
+
+- Somente o aprovador da posição pendente pode decidir.
+- A aprovação só libera a próxima posição da cadeia.
+- A última aprovação altera o pedido para `APPROVED`.
+- A rejeição exige um motivo, altera o pedido para `REJECTED` e interrompe
+  definitivamente o fluxo.
+- Pedidos aprovados ou rejeitados não aceitam novas decisões.
+- O histórico mantém aprovador, posição, status, data e motivo da rejeição.
+
+### Regras por obra
+
+Cada regra possui:
+
+- obra;
+- limite mínimo em centavos;
+- limite máximo opcional em centavos;
+- lista ordenada de aprovadores.
+
+Faixas sem limite máximo representam o intervalo final. O backend impede
+faixas conflitantes para a mesma obra e aprovadores duplicados na mesma regra.
+
+## API HTTP
+
+Base URL: `http://localhost:3001`
+
+### Obras, usuários e fornecedores
+
+| Método | Endpoint | Descrição |
 |---|---|---|
-| `GET/POST` | `/works`, `/users`, `/suppliers` | Consultar e cadastrar dados de referência |
-| `GET/POST/PATCH/DELETE` | `/works/:workId/approval-rules[/:ruleId]` | Gerenciar faixas e aprovadores ordenados |
-| `GET` | `/orders` e `/orders/:id` | Listar pedidos e consultar itens/histórico |
-| `POST` | `/orders` | Criar pedido e materializar sua cadeia de aprovação |
-| `POST` | `/orders/:id/approve` | Aprovar a etapa atual (`{"userId": 1}`) |
-| `POST` | `/orders/:id/reject` | Rejeitar com motivo (`{"userId": 1, "reason": "..."}`) |
+| `GET` | `/works` | Lista obras |
+| `POST` | `/works` | Cria uma obra |
+| `GET` | `/users` | Lista usuários |
+| `POST` | `/users` | Cria um usuário |
+| `GET` | `/suppliers` | Lista fornecedores |
+| `POST` | `/suppliers` | Cria um fornecedor |
 
-Exemplo de criação de pedido:
+Exemplo de criação de obra:
+
+```json
+{
+  "name": "Residencial Aurora"
+}
+```
+
+### Pedidos
+
+| Método | Endpoint | Descrição |
+|---|---|---|
+| `GET` | `/orders` | Lista pedidos resumidos |
+| `GET` | `/orders/:id` | Consulta pedido, itens e histórico |
+| `POST` | `/orders` | Cria pedido e cadeia de aprovação |
+| `POST` | `/orders/:id/approve` | Aprova a etapa atual |
+| `POST` | `/orders/:id/reject` | Rejeita com motivo |
+
+Exemplo de criação:
 
 ```json
 {
@@ -73,159 +321,148 @@ Exemplo de criação de pedido:
   "orderDate": "2026-10-28T12:00:00.000Z",
   "notes": "Compra para a fundação",
   "items": [
-    { "description": "Cimento", "quantity": "20", "unit": "saco", "unitPriceCents": 4500 }
+    {
+      "description": "Cimento",
+      "quantity": "20",
+      "unit": "saco",
+      "unitPriceCents": 4500
+    }
   ]
 }
 ```
 
-O total é calculado exclusivamente no backend. A regra aplicável é a faixa
-com maior limite mínimo que contenha o total; se não houver regra, o pedido é
-recusado. A criação do cabeçalho, itens e etapas ocorre em uma transação.
-Somente o aprovador da etapa pendente pode decidir. Uma rejeição exige motivo,
-interrompe a cadeia e permanece no histórico; após a última aprovação o pedido
-passa para `APPROVED`. Faixas sem limite máximo representam o intervalo final.
+Payloads de decisão:
 
-### Decisões técnicas
+```json
+{ "userId": 1 }
+```
 
-- **PostgreSQL + Drizzle:** integridade referencial, enums de status, índices
-  únicos e transações explícitas, mantendo as consultas próximas ao SQL.
-- **Centavos inteiros:** evita erros de ponto flutuante em totais e limites.
-- **Cadeia materializada:** alterações futuras nas regras não mudam o histórico
-  de um pedido já criado.
-- **Validação e concorrência:** DTOs rejeitam payloads inválidos; a transação
-  verifica a etapa pendente e o status atual antes de registrar cada decisão.
-- Em produção, adicionaria autenticação/autorização, paginação, auditoria
-  imutável, observabilidade, migrações executadas no deploy e pool gerenciado.
+```json
+{
+  "userId": 1,
+  "reason": "Valor fora do orçamento aprovado"
+}
+```
 
----
+### Regras de alçada
 
-# O que você vai construir
-
-Três telas. O layout é livre — **não entregamos Figma, API ou implementação de referência**. O desenho das telas e as decisões de produto são parte da avaliação.
-
-## 1. Cadastro de pedido de compra
-
-Um pedido de compra representa uma solicitação ao fornecedor e deve conter **um ou mais itens**. A alçada é determinada pelo **valor total do pedido**, e não pelo valor isolado de um item.
-
-
-### Dados gerais
-
-| Campo | Obrigatório | Comportamento esperado |
-|---|---:|---|
-| Obra | Sim | Lista as obras disponíveis para o pedido. |
-| Fornecedor | Sim | Identifica o fornecedor do pedido. |
-| Data do pedido | Sim | Data de emissão do pedido. |
-| Observações internas | Não | Campo livre para justificar ou complementar a solicitação. |
-
-Não é **obrigatório** criar uma tela de cadastro de fornecedor, obra ou usuário — se quiser, considere que esses dados já existem no sistema. A tela deve apenas permitir selecionar a obra e o fornecedor do pedido.
-
-### Itens do pedido
-
-A tela começa com um item em branco e deve permitir **adicionar, editar e remover N itens** antes do envio. Cada item deve ter, no mínimo:
-
-| Campo | Obrigatório | Comportamento esperado |
-|---|---:|---|
-| Descrição | Sim | Descreve claramente o material ou serviço. |
-| Quantidade | Sim | Número positivo; pode aceitar decimais. |
-| Unidade | Sim | Por exemplo: `un`, `kg`, `m`, `m²` ou `h`. |
-| Preço unitário | Sim | Valor monetário não negativo. |
-| Total do item | Calculado | `quantidade × preço unitário`; não deve ser editável diretamente. |
-
-O candidato pode definir a experiência de uso mais adequada — por exemplo, uma tabela expansível, um formulário por item ou um drawer — desde que a inclusão de vários itens permaneça clara.
-
-### Totalização e envio
-
-A interface deve exibir o **total do pedido**, calculado pela soma dos totais dos itens. Esse é o valor usado para selecionar a regra de alçada.
-
-O botão **Cadastrar pedido** só deve ficar disponível quando os dados gerais e todos os itens forem válidos. Ao criar o pedido, o back-end deve persistir cabeçalho, itens, total calculado e cadeia inicial de aprovação.
-## 2. Aprovação
-
-A tela deve listar pedidos e permitir abrir os detalhes de cada um. A lista pode ser em tabela, cartões ou outra composição clara, mas deve apresentar pelo menos:
-
-| Informação por pedido | Descrição |
-|---|---|
-| Identificador, obra e fornecedor | Contexto rápido do pedido. |
-| Data, quantidade de itens e valor total | Resumo financeiro e operacional. |
-| Situação | Pendente, aprovado ou rejeitado. |
-| Alçada atual | Aprovadores concluídos, aprovador atual e próximas etapas. |
-| Ações | Aprovar ou rejeitar quando houver uma decisão disponível. |
-
-Nos detalhes, apresente os itens — descrição, quantidade, unidade, preço unitário e total — além do histórico de decisões. A lista de pedidos **pendentes** deve refletir o nível atual da alçada, calculado e persistido pelo back-end. A rejeição exige motivo, interrompe o fluxo e fica registrada no histórico. Quando toda a cadeia for concluída, as ações de decisão devem estar desabilitadas com uma explicação.
-
-## 3. Regras da alçada
-
-A tela deve permitir selecionar uma obra e configurar as faixas de valor que definem a cadeia de aprovação. Uma representação mínima pode ser uma tabela como esta:
-
-| Faixa de valor | Aprovadores, na ordem do fluxo | Ações |
+| Método | Endpoint | Descrição |
 |---|---|---|
-| Até R$ 10.000,00 | Amanda | Editar / remover |
-| Acima de R$ 10.000,00 | Amanda → João | Editar / remover |
+| `GET` | `/works/:workId/approval-rules` | Lista regras da obra |
+| `POST` | `/works/:workId/approval-rules` | Cria uma regra |
+| `PATCH` | `/works/:workId/approval-rules/:ruleId` | Edita uma regra |
+| `DELETE` | `/works/:workId/approval-rules/:ruleId` | Remove uma regra |
 
-A interface deve listar usuários disponíveis e permitir:
+Exemplo:
 
-* criar, editar e remover níveis/faixas de alçada;
-* definir o limite de valor de cada faixa;
-* adicionar, remover e reordenar aprovadores em cada faixa;
-* listar as regras já salvas para a obra selecionada.
+```json
+{
+  "minimumTotalCents": 0,
+  "maximumTotalCents": 1000000,
+  "approvers": [
+    { "userId": 1 },
+    { "userId": 2 }
+  ]
+}
+```
 
-O comportamento para valores sem regra aplicável deve ser definido e documentado pelo candidato — por exemplo, impedir o envio do pedido com uma mensagem clara.
+As respostas de erro usam os status HTTP apropriados, como `400` para
+payload/regra inválida, `404` para recurso inexistente e `409` para conflito
+de operação. O frontend apresenta o erro e oferece nova tentativa quando a
+API está indisponível.
 
----
+## Comunicação frontend/backend
 
-# Validações e erros (exigidos)
+O frontend usa um cliente HTTP pequeno em `frontend/src/lib/client.ts`.
+O endereço base vem de `NEXT_PUBLIC_API_URL`, enquanto os caminhos são
+referenciados por constantes. O cliente:
 
-| Situação | Comportamento esperado |
-|---|---|
-| Quantidade ou preço unitário inválido, negativo ou não numérico | erro no item correspondente, mensagem compreensível, não envia |
-| Pedido sem itens | erro claro; não envia |
-| Campos obrigatórios vazios (obra, fornecedor, data ou descrição de item) | erro no campo correspondente; não envia |
-| Nenhuma obra cadastrada | empty state amigável, não tela branca |
-| API fora do ar / 500 | estado de erro com opção de tentar novamente |
-| Rejeitar sem motivo | validação antes do submit |
-| Cadeia de alçada já concluída | botão de decisão desabilitado + explicação |
+- envia `Content-Type: application/json`;
+- interpreta erros HTTP em uma mensagem exibível;
+- valida a resposta com Zod;
+- trata respostas sem conteúdo (`204`).
 
-Loading state é obrigatório em toda lista.
+O hook `useObraFlowData` carrega catálogo, pedidos e regras. Após criar,
+aprovar, rejeitar ou alterar uma regra, a tela dispara uma nova leitura para
+manter o estado visual alinhado com o banco.
 
----
+## Estados, validações e responsividade
 
-# 📦 Como entregar (Prazo: 01/11/2026 às 23:59)
-O repositório deve conter instruções claras para instalar dependências, configurar o ambiente e iniciar a solução completa (front-end, back-end e banco de dados, quando aplicável). O método de execução é livre; `docker compose` é aceito, mas não obrigatório.
+Os requisitos do desafio são tratados assim:
 
-Repositório deve conter:
+- **Loading:** indicador de carregamento durante as leituras das listas.
+- **Erro/API fora do ar:** mensagem de erro e ação “Tentar novamente”.
+- **Empty state:** mensagens específicas quando não existem obras, regras ou
+  pedidos.
+- **Validação:** Zod no frontend, atributos HTML para feedback imediato e
+  DTOs/pipes no backend como validação definitiva.
+- **Pedido sem itens:** bloqueado antes do envio e também no backend.
+- **Quantidade/preço inválidos:** erro compreensível e nenhum envio.
+- **Rejeição sem motivo:** bloqueada antes da chamada.
+- **Cadeia concluída:** decisões não são oferecidas para pedidos concluídos.
+- **Responsividade:** sidebar, formulários, tabela, cards e regras adaptam-se
+  aos breakpoints definidos em `styles/responsive.css`.
 
-* código-fonte do front-e˝nd e do back-end;
-* dados de demonstração e instruções para criá-los ou carregá-los;
-* `README.md` com explicando:
-  * screenshots das telas;
-  * as tecnologias escolhidas e os motivos da escolha;
-  * como a regra de alçada é modelada, calculada e persistida;
-  * como o front-end se comunica com o back-end;
-  * como a consistência e a integridade dos dados são garantidas;
-  * o que mudaria em produção;
-1. Faça um **Fork** deste repositório (`https://github.com/ObraFlow/obraflow-case`).
-2. Abra um **Pull Request (PR)** para este repositório até **01/11/2026 às 23:59**.
-3. **Importante:** Na descrição do seu Pull Request, deixe seu **e-mail e telefone (WhatsApp)** para contato!
+## Consistência e integridade dos dados
 
----
+- Migrations versionadas criam tabelas, enums, chaves estrangeiras e
+  restrições únicas.
+- Criação do pedido, itens e aprovações ocorre em uma transação.
+- Decisões verificam o status atual e a posição pendente dentro de uma
+  transação, evitando aprovações fora de ordem.
+- Chaves estrangeiras preservam relações entre obras, fornecedores,
+  pedidos, regras e usuários.
+- Totais são recalculados no backend e armazenados em centavos inteiros.
+- O histórico de aprovação é persistido separadamente do cabeçalho do pedido.
 
-# Avaliação
+## Comandos de desenvolvimento
 
-| Critério | Peso |
-|---|---:|
-| Funcionamento completo: front-end, back-end e persistência | 25% |
-| Modelagem e implementação das regras de alçada | 20% |
-| Qualidade de código, organização e decisões técnicas | 15% |
-| **Desenho de UI: hierarquia, clareza, consistência** | 20% |
-| Estados (loading / empty / erro), responsividade e validações | 10% |
-| Documentação (`## Decisões técnicas`) | 10% |
+Backend:
 
-IA é permitida — mas você precisará explicar cada decisão na entrevista de 30 min.
+```bash
+cd backend
+npm run build
+npm run lint
+npm run format:check
+npm test
+```
 
----
+Frontend:
 
-## Contato
+```bash
+cd frontend
+npm run lint
+npm run format:check
+npm run build
+```
 
+Gerar uma migration após alterar o schema:
 
-**Jonathan Bispo**  
-WhatsApp: [+55 71 99204-4335](https://wa.me/5571992044335)  
-E-mail: [contrato@obraflow.io](mailto:contrato@obraflow.io)
+```bash
+cd backend
+npm run db:generate
+```
+
+## Decisões técnicas e próximos passos de produção
+
+- **PostgreSQL + Drizzle:** fornece integridade relacional, transações e
+  consultas tipadas sem esconder a modelagem SQL.
+- **Centavos inteiros:** evita erros de ponto flutuante em valores monetários.
+- **Cadeia materializada:** preserva a regra usada no momento da compra.
+- **Clean Architecture no backend:** mantém domínio e casos de uso testáveis
+  sem acoplamento ao framework ou ao ORM.
+- **Features no frontend:** concentra componentes e validações por contexto
+  sem transformar páginas em arquivos monolíticos.
+- **Migrations no startup Docker:** garante que uma instalação limpa não
+  responda 500 por falta de tabelas.
+
+Para produção, eu adicionaria:
+
+- autenticação e autorização por usuário/obra;
+- identificação do aprovador a partir da sessão, sem aceitar `userId` vindo
+  livremente da interface;
+- paginação e filtros na lista de pedidos;
+- auditoria imutável e observabilidade;
+- testes de integração/e2e para concorrência e regras de alçada;
+- modal/formulário dedicado para decisões, substituindo entradas simples;
+- atualização em tempo real da fila de aprovação.
