@@ -16,7 +16,7 @@ export function PageHeader({ screen }: { screen: Screen }) {
       <div className="top-actions">
         <button className="icon-btn">⌕</button>
         <button className="icon-btn">♧</button>
-        <span className="user-dot">LC</span>
+        <span className="user-dot">LS</span>
       </div>
     </header>
   );

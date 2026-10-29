@@ -18,9 +18,9 @@ export function Sidebar({ screen, pendingCount, onNavigate }: Props) {
         </span>
       </div>
       <div className="workspace">
-        <span className="avatar">LC</span>
+        <span className="avatar">LS</span>
         <div>
-          <strong>Lucas Costa</strong>
+          <strong>Lucas Soares</strong>
           <small>Minha conta</small>
         </div>
         <span className="chevron">⌄</span>

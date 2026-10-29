@@ -12,6 +12,19 @@ npm run db:seed
 npm run start:dev
 ```
 
+Com Docker Compose, o container do backend aguarda o Postgres ficar saudável,
+aplica as migrations automaticamente e então inicia a API:
+
+```bash
+docker compose up --build
+```
+
+Para carregar os dados de demonstração depois da primeira inicialização:
+
+```bash
+docker compose exec backend node dist/database/seed.js
+```
+
 ### Arquitetura do backend
 
 Cada módulo de negócio em `backend/src/modules` segue a separação:

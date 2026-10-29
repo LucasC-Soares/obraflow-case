@@ -20,5 +20,6 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/drizzle ./drizzle
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+CMD ["npm", "run", "start:prod"]
