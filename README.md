@@ -237,6 +237,107 @@ As features não importam umas às outras. Componentes compartilhados não
 conhecem regras específicas de uma feature. As rotas HTTP ficam centralizadas
 em `frontend/src/constants/api-routes.ts`.
 
+## Modelagem do banco de dados
+
+O banco de dados utiliza PostgreSQL e segue um modelo relacional, com tabelas separadas para as principais entidades do sistema e chaves estrangeiras para manter a integridade dos relacionamentos.
+
+```mermaid
+erDiagram
+    WORKS ||--o{ APPROVAL_RULES : possui
+    APPROVAL_RULES ||--o{ APPROVAL_RULE_APPROVERS : define
+    USERS ||--o{ APPROVAL_RULE_APPROVERS : participa
+
+    WORKS ||--o{ PURCHASE_ORDERS : recebe
+    SUPPLIERS ||--o{ PURCHASE_ORDERS : fornece
+    PURCHASE_ORDERS ||--|{ PURCHASE_ORDER_ITEMS : contem
+    PURCHASE_ORDERS ||--o{ PURCHASE_ORDER_APPROVALS : registra
+    USERS ||--o{ PURCHASE_ORDER_APPROVALS : aprova
+
+    WORKS {
+        int id PK
+        varchar name
+        timestamp created_at
+    }
+
+    USERS {
+        int id PK
+        varchar name
+        varchar email UK
+        timestamp created_at
+    }
+
+    SUPPLIERS {
+        int id PK
+        varchar name
+        varchar document UK
+        timestamp created_at
+    }
+
+    APPROVAL_RULES {
+        int id PK
+        int work_id FK
+        int minimum_total_cents
+        int maximum_total_cents
+        timestamp created_at
+    }
+
+    APPROVAL_RULE_APPROVERS {
+        int id PK
+        int rule_id FK
+        int user_id FK
+        int position
+    }
+
+    PURCHASE_ORDERS {
+        int id PK
+        int work_id FK
+        int supplier_id FK
+        timestamp order_date
+        varchar notes
+        int total_cents
+        order_status status
+        timestamp created_at
+    }
+
+    PURCHASE_ORDER_ITEMS {
+        int id PK
+        int order_id FK
+        varchar description
+        numeric quantity
+        varchar unit
+        int unit_price_cents
+        int total_cents
+    }
+
+    PURCHASE_ORDER_APPROVALS {
+        int id PK
+        int order_id FK
+        int approver_id FK
+        int position
+        approval_status status
+        timestamp decided_at
+        varchar rejection_reason
+    }
+```
+
+### Organização das entidades
+
+- **Obras, usuários e fornecedores:** representam os cadastros básicos utilizados nos pedidos e nas regras de aprovação. O e-mail dos usuários e o documento dos fornecedores são únicos.
+- **Regras de alçada:** cada regra pertence a uma obra e define uma faixa de valores por meio dos limites mínimo e máximo, expressos em centavos.
+- **Aprovadores das regras:** a tabela `approval_rule_approvers` relaciona usuários às regras e define a ordem em que devem aprovar. A posição é única dentro de cada regra.
+- **Pedidos de compra e itens:** cada pedido está associado a uma obra e a um fornecedor, podendo conter vários itens. O cabeçalho armazena o valor total e o status geral, enquanto os itens registram descrição, quantidade, unidade e preços.
+- **Histórico de aprovações:** a tabela `purchase_order_approvals` registra os aprovadores, suas posições na cadeia, o status de cada decisão, a data e o motivo de eventual rejeição. A posição é única dentro de cada pedido.
+
+### Decisões de modelagem
+
+Os valores monetários são armazenados como inteiros em centavos, evitando problemas de precisão de ponto flutuante. As quantidades dos itens utilizam `numeric(14,3)`, permitindo representar até três casas decimais.
+
+Os status dos pedidos e das aprovações são definidos por enums do PostgreSQL, restringindo os valores possíveis a `PENDING`, `APPROVED` e `REJECTED`.
+
+A cadeia de aprovadores é materializada no momento da criação do pedido. Dessa forma, as aprovações de um pedido existente permanecem vinculadas à sequência definida naquele momento, mesmo que as regras da obra sejam alteradas posteriormente.
+
+As chaves estrangeiras, restrições de unicidade e transações complementam a modelagem, ajudando a preservar a integridade dos dados durante a criação dos pedidos e o processamento das decisões.
+
 ## Regras de negócio
 
 ### Criação do pedido
