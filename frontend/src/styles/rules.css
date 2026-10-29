@@ -1,0 +1,87 @@
+.rules-layout {
+  flex-direction: row;
+  align-items: flex-start;
+}
+.rules-card {
+  flex: 1;
+}
+.new-rule {
+  width: 295px;
+  padding: 25px;
+}
+.new-rule > p {
+  margin-bottom: 22px;
+  line-height: 1.5;
+}
+.new-rule label {
+  margin-top: 17px;
+}
+.optional {
+  font-size: 9px;
+  color: #aaa;
+  font-weight: 400;
+}
+.rule-row {
+  display: grid;
+  grid-template-columns: 1fr 2.2fr 30px;
+  gap: 25px;
+  align-items: center;
+  padding: 20px 8px;
+  border-top: 1px solid var(--line);
+}
+.rule-range small,
+.rule-people small {
+  display: block;
+  color: #a09e96;
+  font-size: 9px;
+  letter-spacing: 0.7px;
+  margin-bottom: 8px;
+}
+.rule-range strong {
+  color: var(--coral);
+  font-size: 13px;
+}
+.person {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.person > span {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #f2c8a9;
+  color: #73503b;
+  font-size: 9px;
+  font-weight: 700;
+}
+.person b {
+  color: #bdbab1;
+  margin: 0 8px;
+}
+.dots {
+  border: 0;
+  color: #aaa;
+  background: transparent;
+  letter-spacing: 2px;
+}
+.approver-selects {
+  display: grid;
+  gap: 8px;
+  margin-top: 5px;
+}
+.check {
+  flex-direction: row;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 400;
+}
+.check input {
+  accent-color: var(--coral);
+}
+.new-rule .primary-button {
+  margin-top: 25px;
+}

@@ -12,8 +12,8 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 FROM dependencies AS builder
-ARG NEXT_PUBLIC_WS_URL=http://localhost:3001
-ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
+ARG NEXT_PUBLIC_API_URL=http://localhost:3001
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY . .
 RUN npm run build
 
