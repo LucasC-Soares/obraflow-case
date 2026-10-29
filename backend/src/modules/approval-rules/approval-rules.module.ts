@@ -6,12 +6,16 @@ import { CreateApprovalRuleUseCase } from './application/use-cases/create-approv
 import { DeleteApprovalRuleUseCase } from './application/use-cases/delete-approval-rule.use-case';
 import { ListApprovalRulesUseCase } from './application/use-cases/list-approval-rules.use-case';
 import { UpdateApprovalRuleUseCase } from './application/use-cases/update-approval-rule.use-case';
+import { APPROVAL_RULES_REPOSITORY } from './domain/repositories/approval-rules.repository';
 
 @Module({
   controllers: [ApprovalRulesController],
   providers: [
     ApprovalRulesService,
-    ApprovalRulesRepositoryImpl,
+    {
+      provide: APPROVAL_RULES_REPOSITORY,
+      useClass: ApprovalRulesRepositoryImpl,
+    },
     CreateApprovalRuleUseCase,
     DeleteApprovalRuleUseCase,
     ListApprovalRulesUseCase,

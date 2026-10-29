@@ -7,12 +7,16 @@ import { GetOrderUseCase } from './application/use-cases/get-order.use-case';
 import { ListOrdersUseCase } from './application/use-cases/list-orders.use-case';
 import { RejectOrderUseCase } from './application/use-cases/reject-order.use-case';
 import { OrdersRepositoryImpl } from './infrastructure/repositories/orders.repository.impl';
+import { ORDERS_REPOSITORY } from './domain/repositories/orders.repository';
 
 @Module({
   controllers: [OrdersController],
   providers: [
     OrdersService,
-    OrdersRepositoryImpl,
+    {
+      provide: ORDERS_REPOSITORY,
+      useClass: OrdersRepositoryImpl,
+    },
     ApproveOrderUseCase,
     CreateOrderUseCase,
     GetOrderUseCase,
