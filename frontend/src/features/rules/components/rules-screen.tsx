@@ -78,7 +78,7 @@ export function RulesScreen({
       return;
     }
     try {
-      await apiRequest(
+      const response = await apiRequest(
         API_ROUTES.approvalRules.byWork(selectedWork),
         z.unknown(),
         {
@@ -98,7 +98,7 @@ export function RulesScreen({
       setMaximum('');
       setApproverIds([]);
       setApproverSearch('');
-      onNotice('Faixa de alçada criada.');
+      onNotice(response.message || 'Faixa de alçada criada.');
       await onReload();
     } catch (cause) {
       setSaveError(

@@ -26,9 +26,21 @@ async function seed(): Promise<void> {
   const [amanda, joao, carla] = await db
     .insert(users)
     .values([
-      { name: 'Amanda Silva', email: 'amanda@obraflow.local' },
-      { name: 'João Oliveira', email: 'joao@obraflow.local' },
-      { name: 'Carla Mendes', email: 'carla@obraflow.local' },
+      {
+        name: 'Amanda Silva',
+        email: 'amanda@obraflow.local',
+        passwordHash: '$2b$10$7Q9J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K',
+      },
+      {
+        name: 'João Oliveira',
+        email: 'joao@obraflow.local',
+        passwordHash: '$2b$10$7Q9J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K',
+      },
+      {
+        name: 'Carla Mendes',
+        email: 'carla@obraflow.local',
+        passwordHash: '$2b$10$7Q9J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K1J1Z5F1G8K',
+      },
     ])
     .returning();
   const [materials, services] = await db

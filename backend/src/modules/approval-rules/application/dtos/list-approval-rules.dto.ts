@@ -12,13 +12,7 @@ export class ListApprovalRulesDto {
   workId!: number;
 }
 
-export class ListApprovalRulesResponseDataDto {
-  @ApiProperty({
-    description: 'Lista de regras de aprovação',
-    type: [ListApprovalRulesDto],
-  })
-  data!: ListApprovalRulesDto[];
-}
+export class ListApprovalRulesResponseDataDto extends ListApprovalRulesDto {}
 
 export class ListApprovalRulesResponseDto implements ApiResponse {
   @ApiProperty({
@@ -29,9 +23,9 @@ export class ListApprovalRulesResponseDto implements ApiResponse {
 
   @ApiProperty({
     description: 'Dados da lista de regras de aprovação',
-    type: ListApprovalRulesResponseDataDto,
+    type: [ListApprovalRulesResponseDataDto],
   })
-  data!: ListApprovalRulesResponseDataDto;
+  data!: ListApprovalRulesResponseDataDto[];
 
   @ApiProperty({
     description: 'Mensagem de sucesso ou erro',

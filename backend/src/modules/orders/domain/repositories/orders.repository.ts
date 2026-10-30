@@ -19,8 +19,17 @@ export type CreateOrderData = {
   items: ParsedOrderItem[];
 };
 
+export type ListedOrder = {
+  id: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  orderDate: Date;
+  totalCents: number;
+  work: string;
+  supplier: string;
+};
+
 export interface OrdersRepository {
-  list(): Promise<PurchaseOrder[]>;
+  list(): Promise<ListedOrder[]>;
   getById(orderId: number): Promise<PurchaseOrder | null>;
   create(data: CreateOrderData): Promise<PurchaseOrder | null>;
   decide(

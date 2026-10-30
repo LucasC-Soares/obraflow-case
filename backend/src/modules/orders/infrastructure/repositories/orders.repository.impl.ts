@@ -20,6 +20,7 @@ import {
 import {
   CreateOrderData,
   OrdersRepository,
+  ListedOrder,
 } from '../../domain/repositories/orders.repository';
 import { PurchaseOrder } from '../../domain/entities/purchase-order.entity';
 
@@ -27,19 +28,20 @@ import { PurchaseOrder } from '../../domain/entities/purchase-order.entity';
 export class OrdersRepositoryImpl implements OrdersRepository {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  async list(): Promise<PurchaseOrder[]> {
-    const orders = await this.db
+  async list(): Promise<ListedOrder[]> {
+    return this.db
       .select({
         id: purchaseOrders.id,
+        status: purchaseOrders.status,
+        orderDate: purchaseOrders.orderDate,
+        totalCents: purchaseOrders.totalCents,
+        work: works.name,
+        supplier: suppliers.name,
       })
       .from(purchaseOrders)
+      .innerJoin(works, eq(purchaseOrders.workId, works.id))
+      .innerJoin(suppliers, eq(purchaseOrders.supplierId, suppliers.id))
       .orderBy(desc(purchaseOrders.createdAt));
-
-    return Promise.all(
-      orders.map(async ({ id }) =>
-        this.toDomainEntity(await this.getWithClient(this.db, id)),
-      ),
-    );
   }
 
   async getById(orderId: number): Promise<PurchaseOrder | null> {

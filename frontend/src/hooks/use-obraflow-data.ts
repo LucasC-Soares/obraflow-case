@@ -49,12 +49,13 @@ export function useObraFlowData(selectedWork: string) {
         apiRequest<Option[]>(API_ROUTES.catalog.works, optionSchema),
         apiRequest<Option[]>(API_ROUTES.catalog.suppliers, optionSchema),
         apiRequest<Option[]>(API_ROUTES.catalog.users, optionSchema),
-        apiRequest<Order[]>(API_ROUTES.orders.list, orderSchema),
+        apiRequest<Order[]>(API_ROUTES.orders.list, orderSchema)
       ]);
-      setWorks(workData);
-      setSuppliers(supplierData);
-      setUsers(userData);
-      setOrders(orderData);
+
+      setWorks(workData.data);
+      setSuppliers(supplierData.data);
+      setUsers(userData.data);
+      setOrders(orderData.data);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'API indisponível.');
     } finally {
@@ -68,12 +69,11 @@ export function useObraFlowData(selectedWork: string) {
       return;
     }
     try {
-      setRules(
-        await apiRequest<Rule[]>(
-          API_ROUTES.approvalRules.byWork(selectedWork),
-          ruleSchema,
-        ),
+      const response = await apiRequest<Rule[]>(
+        API_ROUTES.approvalRules.byWork(selectedWork),
+        ruleSchema,
       );
+      setRules(response.data);
     } catch (cause) {
       setError(
         cause instanceof Error

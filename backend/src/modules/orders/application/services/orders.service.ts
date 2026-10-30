@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { CreateOrderDto } from '../dtos/create-order.dto';
 import {
   CreateOrderData,
+  ListedOrder,
   ORDERS_REPOSITORY,
   OrdersRepository,
 } from '../../domain/repositories/orders.repository';
@@ -14,7 +15,7 @@ export class OrdersService {
     private readonly repository: OrdersRepository,
   ) {}
 
-  list(): Promise<PurchaseOrder[]> {
+  list(): Promise<ListedOrder[]> {
     return this.repository.list();
   }
 

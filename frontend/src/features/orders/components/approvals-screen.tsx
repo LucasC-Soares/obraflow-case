@@ -25,7 +25,7 @@ export function ApprovalsScreen({
       : (window.prompt('Motivo da rejeição:') ?? '');
     const parsed = decideOrderSchema.safeParse({ userId, reason });
     if (!parsed.success) return;
-    await apiRequest(
+    const response = await apiRequest(
       approve
         ? API_ROUTES.orders.approve(order.id)
         : API_ROUTES.orders.reject(order.id),
@@ -35,7 +35,10 @@ export function ApprovalsScreen({
         body: JSON.stringify({ userId: Number(userId), reason }),
       },
     );
-    onNotice(approve ? 'Aprovação registrada.' : 'Pedido rejeitado.');
+    onNotice(
+      response.message ||
+        (approve ? 'Aprovação registrada.' : 'Pedido rejeitado.'),
+    );
     await onReload();
   };
   const pending = orders.filter((order) => order.status === 'PENDING');

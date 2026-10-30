@@ -7,12 +7,15 @@ export class ListOrdersUseCase {
   constructor(private readonly ordersService: OrdersService) {}
 
   async execute(): Promise<ListOrdersResponseDataDto[]> {
-    const result = this.ordersService.list();
-    return result.then((orders) => {
-      return orders.map((order) => ({
-        orderId: order.id,
-        status: order.status,
-      }));
-    });
+    const orders = await this.ordersService.list();
+
+    return orders.map((order) => ({
+      id: order.id,
+      status: order.status,
+      orderDate: order.orderDate.toISOString(),
+      totalCents: order.totalCents,
+      work: order.work,
+      supplier: order.supplier,
+    }));
   }
 }

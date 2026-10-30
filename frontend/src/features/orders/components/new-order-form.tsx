@@ -81,23 +81,31 @@ export function NewOrderForm({
       );
       return;
     }
-    await apiRequest(API_ROUTES.orders.list, z.unknown(), {
-      method: 'POST',
-      body: JSON.stringify({
-        workId: Number(selectedWork),
-        supplierId: Number(supplierId),
-        orderDate: new Date(orderDate).toISOString(),
-        notes: notes || undefined,
-        items: items.map((item) => ({
-          ...item,
-          unitPriceCents: Math.round(parseMoney(item.unitPrice) * 100),
-        })),
-      }),
-    });
-    setItems([emptyItem()]);
-    setNotes('');
-    onSuccess('Pedido criado e enviado para aprovação.');
-    await onReload();
+    try {
+      const response = await apiRequest(API_ROUTES.orders.list, z.unknown(), {
+        method: 'POST',
+        body: JSON.stringify({
+          workId: Number(selectedWork),
+          supplierId: Number(supplierId),
+          orderDate: new Date(orderDate).toISOString(),
+          notes: notes || undefined,
+          items: items.map((item) => ({
+            ...item,
+            unitPriceCents: Math.round(parseMoney(item.unitPrice) * 100),
+          })),
+        }),
+      });
+      setItems([emptyItem()]);
+      setNotes('');
+      onSuccess(response.message || 'Pedido criado e enviado para aprovação.');
+      await onReload();
+    } catch (cause) {
+      onSuccess(
+        cause instanceof Error
+          ? cause.message
+          : 'Não foi possível criar o pedido.',
+      );
+    }
   };
 
   return (

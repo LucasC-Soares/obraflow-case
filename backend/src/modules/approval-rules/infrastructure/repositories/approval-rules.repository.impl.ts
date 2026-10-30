@@ -174,6 +174,7 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
         id: approver.id,
         position: approver.position,
         userId: approver.userId,
+        userName: approver.userName,
         ruleId: rule.id,
       })),
     });

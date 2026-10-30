@@ -10,6 +10,7 @@ export type ApprovalRuleApprover = {
   id: number;
   ruleId: number;
   userId: number;
+  userName: string;
   position: number;
 };
 
