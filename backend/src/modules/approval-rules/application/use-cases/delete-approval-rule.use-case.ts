@@ -5,7 +5,10 @@ import { ApprovalRulesService } from '../services/approval-rules.service';
 export class DeleteApprovalRuleUseCase {
   constructor(private readonly service: ApprovalRulesService) {}
 
-  execute(workId: number, ruleId: number) {
-    return this.service.remove(workId, ruleId);
+  async execute(workId: number, ruleId: number): Promise<boolean> {
+    const result = this.service.remove(workId, ruleId);
+    return result.then((deleted) => {
+      return deleted;
+    });
   }
 }

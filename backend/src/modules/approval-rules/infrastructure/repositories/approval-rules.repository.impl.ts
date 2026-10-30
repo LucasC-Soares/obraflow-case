@@ -11,14 +11,19 @@ import {
 import {
   ApprovalRuleInput,
   ApprovalRulesRepository,
+  ApprovalRuleRange,
 } from '../../domain/repositories/approval-rules.repository';
+import { ApprovalRule } from '../../domain/entities/approval-rule.entity';
 
 @Injectable()
 export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  listByWork(workId: number): Promise<unknown[]> {
-    return this.listRules(this.db, workId);
+  async listByWork(workId: number): Promise<ApprovalRule[]> {
+    const result = this.listRules(this.db, workId);
+    return result.then((rules) =>
+      rules.map((rule) => this.toDomainEntity(rule)),
+    );
   }
 
   async workExists(workId: number): Promise<boolean> {
@@ -38,7 +43,7 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
     return found.map(({ id }) => id);
   }
 
-  listRangesByWork(workId: number) {
+  listRangesByWork(workId: number): Promise<ApprovalRuleRange[]> {
     return this.db
       .select({
         id: approvalRules.id,
@@ -49,8 +54,11 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
       .where(eq(approvalRules.workId, workId));
   }
 
-  async create(workId: number, input: ApprovalRuleInput) {
-    return this.db.transaction(async (tx) => {
+  async create(
+    workId: number,
+    input: ApprovalRuleInput,
+  ): Promise<ApprovalRule | null> {
+    const result = this.db.transaction(async (tx) => {
       const [rule] = await tx
         .insert(approvalRules)
         .values({
@@ -68,10 +76,16 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
       );
       return this.ruleWithApprovers(tx, rule.id);
     });
+
+    return result.then((rule) => (rule ? this.toDomainEntity(rule) : null));
   }
 
-  async update(workId: number, ruleId: number, input: ApprovalRuleInput) {
-    return this.db.transaction(async (tx) => {
+  async update(
+    workId: number,
+    ruleId: number,
+    input: ApprovalRuleInput,
+  ): Promise<ApprovalRule | null> {
+    const result = this.db.transaction(async (tx) => {
       const [rule] = await tx
         .update(approvalRules)
         .set({
@@ -95,6 +109,8 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
       );
       return this.ruleWithApprovers(tx, ruleId);
     });
+
+    return result.then((rule) => (rule ? this.toDomainEntity(rule) : null));
   }
 
   async remove(workId: number, ruleId: number): Promise<boolean> {
@@ -121,7 +137,7 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
     );
   }
 
-  private ruleWithApprovers(db: DatabaseClient, ruleId: number) {
+  private async ruleWithApprovers(db: DatabaseClient, ruleId: number) {
     return db
       .select()
       .from(approvalRules)
@@ -143,5 +159,23 @@ export class ApprovalRulesRepositoryImpl implements ApprovalRulesRepository {
       .innerJoin(users, eq(users.id, approvalRuleApprovers.userId))
       .where(eq(approvalRuleApprovers.ruleId, ruleId))
       .orderBy(asc(approvalRuleApprovers.position));
+  }
+
+  toDomainEntity(data: unknown): ApprovalRule {
+    const rule = data as ApprovalRule;
+
+    return ApprovalRule.create({
+      id: rule.id,
+      workId: rule.workId,
+      minimumTotalCents: rule.minimumTotalCents,
+      maximumTotalCents: rule.maximumTotalCents ?? null,
+      createdAt: rule.createdAt,
+      approvers: (rule.approvers ?? []).map((approver) => ({
+        id: approver.id,
+        position: approver.position,
+        userId: approver.userId,
+        ruleId: rule.id,
+      })),
+    });
   }
 }

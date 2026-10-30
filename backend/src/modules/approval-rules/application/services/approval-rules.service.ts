@@ -9,6 +9,7 @@ import {
   ApprovalRuleInput,
   ApprovalRulesRepository,
 } from '../../domain/repositories/approval-rules.repository';
+import { ApprovalRule } from '../../domain/entities/approval-rule.entity';
 
 @Injectable()
 export class ApprovalRulesService {
@@ -17,33 +18,40 @@ export class ApprovalRulesService {
     private readonly repository: ApprovalRulesRepository,
   ) {}
 
-  async list(workId: number) {
+  async list(workId: number): Promise<ApprovalRule[]> {
     return this.repository.listByWork(workId);
   }
 
-  async create(workId: number, input: ApprovalRuleInput) {
+  async create(
+    workId: number,
+    input: ApprovalRuleInput,
+  ): Promise<ApprovalRule | null> {
     await this.validate(workId, input);
     return this.repository.create(workId, input);
   }
 
-  async update(workId: number, ruleId: number, input: ApprovalRuleInput) {
+  async update(
+    workId: number,
+    ruleId: number,
+    input: ApprovalRuleInput,
+  ): Promise<ApprovalRule | null> {
     await this.validate(workId, input, ruleId);
     const rule = await this.repository.update(workId, ruleId, input);
     if (!rule) throw new NotFoundException('Regra de alçada não encontrada.');
     return rule;
   }
 
-  async remove(workId: number, ruleId: number) {
+  async remove(workId: number, ruleId: number): Promise<boolean> {
     if (!(await this.repository.remove(workId, ruleId)))
       throw new NotFoundException('Regra de alçada não encontrada.');
-    return { deleted: true };
+    return true;
   }
 
   private async validate(
     workId: number,
     input: ApprovalRuleInput,
     ignoredRuleId?: number,
-  ) {
+  ): Promise<void> {
     if (!input.approvers.length)
       throw new BadRequestException(
         'A regra precisa de ao menos um aprovador.',

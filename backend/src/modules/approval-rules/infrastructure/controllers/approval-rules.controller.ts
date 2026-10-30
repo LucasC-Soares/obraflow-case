@@ -35,8 +35,13 @@ export class ApprovalRulesController {
     description: 'ID da obra',
     type: Number,
   })
-  list(@Param('workId', ParseIntPipe) workId: number) {
-    return this.listRules.execute(workId);
+  async list(@Param('workId', ParseIntPipe) workId: number) {
+    const result = this.listRules.execute(workId);
+    return result.then((data) => ({
+      success: true,
+      data,
+      message: 'Regras de aprovação listadas com sucesso.',
+    }));
   }
 
   @Post()
@@ -49,11 +54,16 @@ export class ApprovalRulesController {
     description: 'ID da obra',
     type: Number,
   })
-  create(
+  async create(
     @Param('workId', ParseIntPipe) workId: number,
     @Body() dto: SaveApprovalRuleDto,
   ) {
-    return this.createRule.execute(workId, dto);
+    const result = this.createRule.execute(workId, dto);
+    return result.then((data) => ({
+      success: true,
+      data,
+      message: 'Regra de aprovação criada com sucesso.',
+    }));
   }
 
   @Patch(':ruleId')
@@ -71,12 +81,17 @@ export class ApprovalRulesController {
     description: 'ID da regra de aprovação',
     type: Number,
   })
-  update(
+  async update(
     @Param('workId', ParseIntPipe) workId: number,
     @Param('ruleId', ParseIntPipe) ruleId: number,
     @Body() dto: SaveApprovalRuleDto,
   ) {
-    return this.updateRule.execute(workId, ruleId, dto);
+    const result = this.updateRule.execute(workId, ruleId, dto);
+    return result.then((data) => ({
+      success: true,
+      data,
+      message: 'Regra de aprovação atualizada com sucesso.',
+    }));
   }
 
   @Delete(':ruleId')
@@ -94,10 +109,17 @@ export class ApprovalRulesController {
     description: 'ID da regra de aprovação',
     type: Number,
   })
-  remove(
+  async remove(
     @Param('workId', ParseIntPipe) workId: number,
     @Param('ruleId', ParseIntPipe) ruleId: number,
   ) {
-    return this.deleteRule.execute(workId, ruleId);
+    const result = this.deleteRule.execute(workId, ruleId);
+    return result.then((success) => ({
+      success,
+      data: null,
+      message: success
+        ? 'Regra de aprovação deletada com sucesso.'
+        : 'Falha ao deletar a regra de aprovação.',
+    }));
   }
 }

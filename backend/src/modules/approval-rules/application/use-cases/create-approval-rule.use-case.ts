@@ -1,12 +1,29 @@
 import { Injectable } from '@nestjs/common';
 import { SaveApprovalRuleDto } from '../dtos/save-approval-rule.dto';
 import { ApprovalRulesService } from '../services/approval-rules.service';
+import { SaveApprovalRuleResponseDataDto } from '../dtos/save-approval-rule.dto';
 
 @Injectable()
 export class CreateApprovalRuleUseCase {
   constructor(private readonly service: ApprovalRulesService) {}
 
-  execute(workId: number, input: SaveApprovalRuleDto) {
-    return this.service.create(workId, input);
+  async execute(
+    workId: number,
+    input: SaveApprovalRuleDto,
+  ): Promise<SaveApprovalRuleResponseDataDto | null> {
+    const result = this.service.create(workId, input);
+    return result.then((approvalRule) => {
+      if (!approvalRule) {
+        return null;
+      }
+      return {
+        id: approvalRule.id,
+        minimumTotalCents: approvalRule.minimumTotalCents,
+        maximumTotalCents: approvalRule.maximumTotalCents ?? undefined,
+        approvers: (approvalRule.approvers ?? []).map((approver) => ({
+          userId: approver.userId,
+        })),
+      };
+    });
   }
 }
