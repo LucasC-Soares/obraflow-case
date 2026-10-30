@@ -1,12 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { CreateSupplierDto } from '../dtos/create-supplier.dto';
+import { CreateSuppliersResponseDataDto } from '../dtos/create-supplier.dto';
 import { SuppliersService } from '../services/suppliers.service';
+import { CreateSupplierData } from '../../domain/repositories/suppliers.repository';
 
 @Injectable()
 export class CreateSupplierUseCase {
   constructor(private readonly service: SuppliersService) {}
 
-  execute(input: CreateSupplierDto) {
-    return this.service.create(input);
+  async execute(
+    input: CreateSupplierData,
+  ): Promise<CreateSuppliersResponseDataDto | null> {
+    const createdSupplier = await this.service.create({
+      name: input.name,
+      document: input.document,
+    });
+
+    if (!createdSupplier) {
+      return null;
+    }
+
+    return {
+      id: createdSupplier.id,
+      name: createdSupplier.name,
+      document: createdSupplier.document,
+      createdAt: createdSupplier.createdAt,
+    };
   }
 }

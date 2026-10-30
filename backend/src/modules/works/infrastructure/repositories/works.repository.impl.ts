@@ -39,11 +39,13 @@ export class WorksRepositoryImpl implements WorksRepository {
     const workData = data as {
       id: number;
       name: string;
+      createdAt: Date;
     };
 
     return Work.create({
       id: workData.id,
       name: workData.name,
+      createdAt: workData.createdAt,
     });
   }
 }
