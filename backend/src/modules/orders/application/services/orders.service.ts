@@ -5,6 +5,7 @@ import {
   ORDERS_REPOSITORY,
   OrdersRepository,
 } from '../../domain/repositories/orders.repository';
+import { PurchaseOrder } from '../../domain/entities/purchase-order.entity';
 
 @Injectable()
 export class OrdersService {
@@ -13,15 +14,15 @@ export class OrdersService {
     private readonly repository: OrdersRepository,
   ) {}
 
-  list() {
+  list(): Promise<PurchaseOrder[]> {
     return this.repository.list();
   }
 
-  get(id: number) {
+  get(id: number): Promise<PurchaseOrder | null> {
     return this.repository.getById(id);
   }
 
-  async create(input: CreateOrderDto) {
+  async create(input: CreateOrderDto): Promise<PurchaseOrder | null> {
     if (!input.items?.length)
       throw new BadRequestException('O pedido precisa ter ao menos um item.');
 
@@ -60,7 +61,12 @@ export class OrdersService {
     return this.repository.create(data);
   }
 
-  decide(orderId: number, userId: number, approve: boolean, reason?: string) {
+  decide(
+    orderId: number,
+    userId: number,
+    approve: boolean,
+    reason?: string,
+  ): Promise<PurchaseOrder | null> {
     if (!approve && !reason?.trim())
       throw new BadRequestException('O motivo da rejeição é obrigatório.');
     return this.repository.decide(orderId, userId, approve, reason);

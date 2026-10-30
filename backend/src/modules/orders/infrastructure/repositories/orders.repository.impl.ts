@@ -21,38 +21,39 @@ import {
   CreateOrderData,
   OrdersRepository,
 } from '../../domain/repositories/orders.repository';
+import { PurchaseOrder } from '../../domain/entities/purchase-order.entity';
 
 @Injectable()
 export class OrdersRepositoryImpl implements OrdersRepository {
   constructor(@Inject(DATABASE) private readonly db: Database) {}
 
-  list() {
-    return this.db
+  async list(): Promise<PurchaseOrder[]> {
+    const orders = await this.db
       .select({
         id: purchaseOrders.id,
-        status: purchaseOrders.status,
-        orderDate: purchaseOrders.orderDate,
-        totalCents: purchaseOrders.totalCents,
-        work: works.name,
-        supplier: suppliers.name,
       })
       .from(purchaseOrders)
-      .innerJoin(works, eq(works.id, purchaseOrders.workId))
-      .innerJoin(suppliers, eq(suppliers.id, purchaseOrders.supplierId))
       .orderBy(desc(purchaseOrders.createdAt));
+
+    return Promise.all(
+      orders.map(async ({ id }) =>
+        this.toDomainEntity(await this.getWithClient(this.db, id)),
+      ),
+    );
   }
 
-  async getById(orderId: number) {
+  async getById(orderId: number): Promise<PurchaseOrder | null> {
     const [order] = await this.db
       .select()
       .from(purchaseOrders)
       .where(eq(purchaseOrders.id, orderId));
     if (!order) throw new NotFoundException('Pedido não encontrado.');
-    return this.getWithClient(this.db, orderId);
+    const orderWithClient = await this.getWithClient(this.db, orderId);
+    return this.toDomainEntity(orderWithClient);
   }
 
-  async create(data: CreateOrderData) {
-    return this.db.transaction(async (tx) => {
+  async create(data: CreateOrderData): Promise<PurchaseOrder | null> {
+    const purchaseOrder = this.db.transaction(async (tx) => {
       const [work] = await tx
         .select({ id: works.id })
         .from(works)
@@ -125,6 +126,8 @@ export class OrdersRepositoryImpl implements OrdersRepository {
       );
       return this.getWithClient(tx, order.id);
     });
+
+    return this.toDomainEntity(await purchaseOrder);
   }
 
   async decide(
@@ -132,8 +135,8 @@ export class OrdersRepositoryImpl implements OrdersRepository {
     userId: number,
     approve: boolean,
     reason?: string,
-  ) {
-    return this.db.transaction(async (tx) => {
+  ): Promise<PurchaseOrder | null> {
+    const purchaseOrder = this.db.transaction(async (tx) => {
       const [order] = await tx
         .select()
         .from(purchaseOrders)
@@ -190,6 +193,8 @@ export class OrdersRepositoryImpl implements OrdersRepository {
       }
       return this.getWithClient(tx, orderId);
     });
+
+    return this.toDomainEntity(await purchaseOrder);
   }
 
   private async getWithClient(db: DatabaseClient, id: number) {
@@ -207,5 +212,74 @@ export class OrdersRepositoryImpl implements OrdersRepository {
       .where(eq(purchaseOrderApprovals.orderId, id))
       .orderBy(asc(purchaseOrderApprovals.position));
     return { ...order, items, approvals };
+  }
+
+  toDomainEntity(order: unknown): PurchaseOrder {
+    const orderData = order as {
+      id: number;
+      workId: number;
+      supplierId: number;
+      orderDate: Date;
+      notes?: string;
+      totalCents: number;
+      status: 'PENDING' | 'APPROVED' | 'REJECTED';
+      createdAt: Date;
+      updatedAt: Date;
+      items: {
+        id: number;
+        orderId: number;
+        description: string;
+        quantity: string;
+        unit: string;
+        unitPriceCents: number;
+        totalCents: number;
+        createdAt: Date;
+        updatedAt: Date;
+      }[];
+      approvals: {
+        id: number;
+        orderId: number;
+        approverId: number;
+        position: number;
+        status: 'PENDING' | 'APPROVED' | 'REJECTED';
+        decidedAt?: Date | null;
+        rejectionReason?: string | null;
+        createdAt: Date;
+        updatedAt: Date;
+      }[];
+    };
+
+    return PurchaseOrder.create({
+      id: orderData.id,
+      workId: orderData.workId,
+      supplierId: orderData.supplierId,
+      orderDate: orderData.orderDate,
+      notes: orderData.notes ?? null,
+      totalCents: orderData.totalCents,
+      status: orderData.status,
+      createdAt: orderData.createdAt,
+      items: orderData.items.map((item) => ({
+        id: item.id,
+        orderId: item.orderId,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        unitPriceCents: item.unitPriceCents,
+        totalCents: item.totalCents,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+      approvals: orderData.approvals.map((approval) => ({
+        id: approval.id,
+        orderId: approval.orderId,
+        approverId: approval.approverId,
+        position: approval.position,
+        status: approval.status,
+        decidedAt: approval.decidedAt ?? null,
+        rejectionReason: approval.rejectionReason ?? null,
+        createdAt: approval.createdAt,
+        updatedAt: approval.updatedAt,
+      })),
+    });
   }
 }

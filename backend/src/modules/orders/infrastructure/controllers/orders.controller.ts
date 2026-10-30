@@ -14,6 +14,9 @@ import { CreateOrderUseCase } from '../../application/use-cases/create-order.use
 import { GetOrderUseCase } from '../../application/use-cases/get-order.use-case';
 import { ListOrdersUseCase } from '../../application/use-cases/list-orders.use-case';
 import { RejectOrderUseCase } from '../../application/use-cases/reject-order.use-case';
+import { ListOrdersResponseDto } from '../../application/dtos/list-order.dto';
+import { GetOrderResponseDto } from '../../application/dtos/get-order.dto';
+import { CreateOrderResponseDto } from '../../application/dtos/create-order.dto';
 
 @ApiTags('Orders')
 @Controller('orders')
@@ -30,8 +33,13 @@ export class OrdersController {
     summary: 'Lista todos os pedidos',
     description: 'Retorna uma lista de todos os pedidos existentes no sistema',
   })
-  list() {
-    return this.listOrders.execute();
+  async list(): Promise<ListOrdersResponseDto> {
+    const orders = this.listOrders.execute();
+    return orders.then((data) => ({
+      success: true,
+      data,
+      message: 'Pedidos listados com sucesso.',
+    }));
   }
 
   @Get(':id')
@@ -45,8 +53,24 @@ export class OrdersController {
     description: 'ID do pedido',
     type: Number,
   })
-  get(@Param('id', ParseIntPipe) id: number) {
-    return this.getOrder.execute(id);
+  async get(
+    @Param('id', ParseIntPipe) id: number,
+  ): Promise<GetOrderResponseDto> {
+    const result = this.getOrder.execute(id);
+    return result.then((data) => {
+      if (!data) {
+        return {
+          success: false,
+          data: null,
+          message: 'Pedido não encontrado.',
+        };
+      }
+      return {
+        success: true,
+        data,
+        message: 'Pedido recuperado com sucesso.',
+      };
+    });
   }
 
   @Post()
@@ -54,8 +78,22 @@ export class OrdersController {
     summary: 'Criar um novo pedido',
     description: 'Cria um novo pedido com base nos dados fornecidos',
   })
-  create(@Body() dto: CreateOrderDto) {
-    return this.createOrder.execute(dto);
+  async create(@Body() dto: CreateOrderDto): Promise<CreateOrderResponseDto> {
+    const result = this.createOrder.execute(dto);
+    return result.then((data) => {
+      if (!data) {
+        return {
+          success: false,
+          data: null,
+          message: 'Falha ao criar o pedido.',
+        };
+      }
+      return {
+        success: true,
+        data,
+        message: 'Pedido criado com sucesso.',
+      };
+    });
   }
 
   @Post(':id/approve')
@@ -68,8 +106,16 @@ export class OrdersController {
     description: 'ID do pedido',
     type: Number,
   })
-  approve(@Param('id', ParseIntPipe) id: number, @Body() dto: DecideOrderDto) {
-    return this.approveOrder.execute(id, dto.userId);
+  async approve(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DecideOrderDto,
+  ) {
+    const result = this.approveOrder.execute(id, dto.userId);
+    return result.then((data) => ({
+      success: true,
+      data,
+      message: 'Pedido aprovado com sucesso.',
+    }));
   }
 
   @Post(':id/reject')
@@ -82,7 +128,15 @@ export class OrdersController {
     description: 'ID do pedido',
     type: Number,
   })
-  reject(@Param('id', ParseIntPipe) id: number, @Body() dto: DecideOrderDto) {
-    return this.rejectOrder.execute(id, dto);
+  async reject(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: DecideOrderDto,
+  ) {
+    const result = this.rejectOrder.execute(id, dto);
+    return result.then((data) => ({
+      success: true,
+      data,
+      message: 'Pedido rejeitado com sucesso.',
+    }));
   }
 }

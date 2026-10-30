@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { ApiResponse } from '../../../../shared/types/index';
 
 export class CreateOrderItemDto {
   @ApiProperty({
@@ -89,4 +90,36 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items!: CreateOrderItemDto[];
+}
+
+export class CreateOrderResponseDataDto {
+  @ApiProperty({
+    description: 'ID do pedido criado',
+    example: 1,
+  })
+  @IsInt()
+  @IsPositive()
+  id!: number;
+}
+
+export class CreateOrderResponseDto implements ApiResponse {
+  @ApiProperty({
+    description: 'Indica se a operação foi bem-sucedida',
+    example: true,
+  })
+  success!: boolean;
+
+  @ApiProperty({
+    description: 'Dados do pedido criado',
+    type: CreateOrderResponseDataDto,
+  })
+  data!: CreateOrderResponseDataDto | null;
+
+  @ApiProperty({
+    description: 'Mensagem de sucesso',
+    example: 'Pedido criado com sucesso.',
+  })
+  @IsString()
+  @IsNotEmpty()
+  message!: string;
 }

@@ -1,3 +1,5 @@
+import { PurchaseOrder } from '../entities/purchase-order.entity';
+
 export const ORDERS_REPOSITORY = Symbol('ORDERS_REPOSITORY');
 
 export type ParsedOrderItem = {
@@ -18,13 +20,14 @@ export type CreateOrderData = {
 };
 
 export interface OrdersRepository {
-  list(): Promise<unknown[]>;
-  getById(orderId: number): Promise<unknown>;
-  create(data: CreateOrderData): Promise<unknown>;
+  list(): Promise<PurchaseOrder[]>;
+  getById(orderId: number): Promise<PurchaseOrder | null>;
+  create(data: CreateOrderData): Promise<PurchaseOrder | null>;
   decide(
     orderId: number,
     userId: number,
     approve: boolean,
     reason?: string,
-  ): Promise<unknown>;
+  ): Promise<PurchaseOrder | null>;
+  toDomainEntity(order: unknown): PurchaseOrder;
 }
