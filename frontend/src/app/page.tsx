@@ -7,47 +7,65 @@ import { RulesScreen } from '@/features/rules/components/rules-screen';
 import { Feedback, LoadingState } from '@/components/ui/feedback';
 import { PageHeader } from '@/components/layout/page-header';
 import { Sidebar } from '@/components/layout/sidebar';
-import { useObraFlowData } from '@/hooks/use-obraflow-data';
+import { useWorksData } from '@/features/works/hooks/use-works-data';
+import { useSuppliersData } from '@/features/suppliers/hooks/use-suppliers-data';
+import { useUsersData } from '@/features/users/hooks/use-users-data';
+import { useOrdersData } from '@/features/orders/hooks/use-orders-data';
+import { useApprovalRulesData } from '@/features/rules/hooks/use-approval-rules-data';
 import { Screen } from '@/types/obraflow';
 
 export default function Home() {
   const [screen, setScreen] = useState<Screen>('new-order');
   const [selectedWork, setSelectedWork] = useState('');
   const [notice, setNotice] = useState('');
-  const data = useObraFlowData(selectedWork);
+  const works = useWorksData();
+  const suppliers = useSuppliersData();
+  const users = useUsersData();
+  const orders = useOrdersData();
+  const approvalRules = useApprovalRulesData(selectedWork);
 
   useEffect(() => {
-    if (!selectedWork && data.works[0])
-      setSelectedWork(String(data.works[0].id));
-  }, [data.works, selectedWork]);
+    if (!selectedWork && works.works[0])
+      setSelectedWork(String(works.works[0].id));
+  }, [works.works, selectedWork]);
 
   const reload = async () => {
     setNotice('');
-    await data.reload();
+    await Promise.all([
+      works.reload(),
+      suppliers.reload(),
+      users.reload(),
+      orders.reload(),
+    ]);
   };
+
+  const loading =
+    works.loading || suppliers.loading || users.loading || orders.loading;
+  const error =
+    works.error ||
+    suppliers.error ||
+    users.error ||
+    orders.error ||
+    approvalRules.error;
 
   return (
     <main className="shell">
       <Sidebar
         screen={screen}
         pendingCount={
-          data.orders.filter((order) => order.status === 'PENDING').length
+          orders.orders.filter((order) => order.status === 'PENDING').length
         }
         onNavigate={setScreen}
       />
       <section className="content">
         <PageHeader screen={screen} />
-        <Feedback
-          error={data.error}
-          notice={notice}
-          onRetry={() => void reload()}
-        />
-        {data.loading ? (
+        <Feedback error={error} notice={notice} onRetry={() => void reload()} />
+        {loading ? (
           <LoadingState />
         ) : screen === 'new-order' ? (
           <NewOrderForm
-            works={data.works}
-            suppliers={data.suppliers}
+            works={works.works}
+            suppliers={suppliers.suppliers}
             selectedWork={selectedWork}
             onWorkChange={setSelectedWork}
             onSuccess={setNotice}
@@ -55,19 +73,19 @@ export default function Home() {
           />
         ) : screen === 'approvals' ? (
           <ApprovalsScreen
-            orders={data.orders}
+            orders={orders.orders}
             onNotice={setNotice}
             onReload={reload}
           />
         ) : (
           <RulesScreen
-            works={data.works}
-            users={data.users}
+            works={works.works}
+            users={users.users}
             selectedWork={selectedWork}
             onWorkChange={setSelectedWork}
-            rules={data.rules}
+            rules={approvalRules.rules}
             onNotice={setNotice}
-            onReload={data.reloadRules}
+            onReload={approvalRules.reload}
           />
         )}
       </section>

@@ -1,8 +1,12 @@
 export const API_ROUTES = {
-  catalog: {
-    works: '/works',
-    suppliers: '/suppliers',
-    users: '/users',
+  works: {
+    list: '/works',
+  },
+  suppliers: {
+    list: '/suppliers',
+  },
+  users: {
+    list: '/users',
   },
   orders: {
     list: '/orders',
