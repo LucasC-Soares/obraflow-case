@@ -218,15 +218,25 @@ reutilizáveis; repositories concretos ficam na infraestrutura.
 
 ```text
 frontend/src/
-├── app/                       # Composição da aplicação Next.js
+├── app/                       # Páginas e rotas da aplicação Next.js
+│   ├── page.tsx               # Novo pedido (/)
+│   ├── approvals/page.tsx     # Aprovações (/approvals)
+│   └── rules/page.tsx         # Regras de alçada (/rules)
 ├── components/                # Componentes compartilhados de layout/UI
 ├── constants/                 # Rotas da API
 ├── features/
+│   ├── works/
+│   │   └── hooks/             # Dados de obras
+│   ├── suppliers/
+│   │   └── hooks/             # Dados de fornecedores
+│   ├── users/
+│   │   └── hooks/             # Dados de usuários
 │   ├── orders/
-│   │   └── components/
+│   │   ├── components/
+│   │   └── hooks/             # Dados e operações de pedidos
 │   └── rules/
-│       └── components/
-├── hooks/                     # Estado e carregamento compartilhado
+│       ├── components/
+│       └── hooks/             # Dados e operações de regras
 ├── lib/                       # Cliente HTTP e formatação
 ├── schemas/                   # Schemas Zod compartilhados
 ├── styles/                    # Estilos separados por responsabilidade
@@ -484,9 +494,16 @@ referenciados por constantes. O cliente:
 - valida a resposta com Zod;
 - trata respostas sem conteúdo (`204`).
 
-O hook `useObraFlowData` carrega catálogo, pedidos e regras. Após criar,
-aprovar, rejeitar ou alterar uma regra, a tela dispara uma nova leitura para
-manter o estado visual alinhado com o banco.
+Os dados são carregados por hooks separados dentro de cada feature:
+`useWorksData`, `useSuppliersData`, `useUsersData`, `useOrdersData` e
+`useApprovalRulesData`. Isso mantém cada integração próxima do domínio
+correspondente, sem um hook monolítico para todo o sistema.
+
+As telas ficam disponíveis nas rotas `/`, `/approvals` e `/rules`. A navegação
+é feita pela URL, portanto a tela atual permanece após recarregar a guia e
+também pode ser compartilhada diretamente. Após criar, aprovar, rejeitar ou
+alterar uma regra, a tela dispara uma nova leitura para manter o estado visual
+alinhado com o banco.
 
 ## Estados, validações e responsividade
 
